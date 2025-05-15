@@ -1,0 +1,105 @@
+// 2.2
+// Дано число N < 106 и последовательность целых чисел из [-231..231] длиной N.
+// Требуется построить бинарное дерево, заданное наивным порядком вставки.
+// Т.е., при добавлении очередного числа K в дерево с корнем root, если root→Key ≤ K, то узел K добавляется в правое поддерево root;
+// иначе в левое поддерево root. Выведите элементы в порядке pre-order (сверху вниз).
+//
+// Рекурсия запрещена.
+
+
+#include <iostream>
+#include <vector>
+#include <stack>
+#include <string>
+
+
+template <typename T>
+class Tree{
+struct TreeNode{
+    TreeNode(const T& val): val(val), left(nullptr), right(nullptr) {}
+    T val;
+    TreeNode* left;
+    TreeNode* right;
+};
+private:
+    TreeNode* root;
+public:
+    Tree(): root(nullptr) {};
+    ~Tree(){
+        if (!root) return;
+
+        std::stack<TreeNode*> stack;
+        std::stack<TreeNode*> trash;
+        stack.push(root);
+        while (!stack.empty()) {
+            TreeNode* node = stack.top();
+            stack.pop();
+            
+            trash.push(node);
+            
+            if (node->right) stack.push(node->right);
+            if (node->left)  stack.push(node->left);
+        }
+        while (!trash.empty()){
+            TreeNode* node = trash.top();
+            trash.pop();
+            delete node;
+        }
+    }
+    void Add(const T& val){
+        if (!root) {
+            root = new TreeNode(val);
+            return;
+        }
+
+        TreeNode* current = root;
+        while (true){
+            if (val < current->val){
+                if (!current->left){
+                    current->left = new TreeNode(val);
+                    break;
+                }
+                current = current->left;
+            }else{
+                if (!current->right){
+                    current->right = new TreeNode(val);
+                    break;
+                }
+                current = current->right;
+            }
+        }
+    }
+    void preOrderTraverse(){
+        if (!root) return;
+
+        std::stack<TreeNode*> stack;
+        stack.push(root);
+        while (!stack.empty()) {
+            TreeNode* node = stack.top();
+            stack.pop();
+            
+            std::cout << node->val << " ";
+            
+            if (node->right) stack.push(node->right);
+            if (node->left)  stack.push(node->left);
+        }
+    }
+};
+
+void run(std::istream& input, std::ostream& output){
+    Tree<int> tr;
+    int n;
+    input >> n;
+    for (int i = 0; i < n; ++i){
+        int val;
+        input >> val;
+        tr.Add(val);
+    }
+    tr.preOrderTraverse();
+}
+
+int main() {
+    run(std::cin, std::cout);
+    return 0;
+}
+

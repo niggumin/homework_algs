@@ -1,0 +1,251 @@
+
+// В одной военной части решили построить в одну шеренгу по росту.
+// Т.к. часть была далеко не образцовая, то солдаты часто приходили не вовремя, а то их и вовсе приходилось выгонять из шеренги за плохо начищенные сапоги.
+// Однако солдаты в процессе прихода и ухода должны были всегда быть выстроены по росту – сначала самые высокие, а в конце – самые низкие.
+// За расстановку солдат отвечал прапорщик, который заметил интересную особенность – все солдаты в части разного роста.
+// Ваша задача состоит в том, чтобы помочь прапорщику правильно расставлять солдат, а именно для каждого приходящего солдата указывать, перед каким солдатом в строе он должен становится. Требуемая скорость выполнения команды - O(log n).
+
+
+
+#include <iostream>
+
+
+template <typename T, typename Comparator = std::less<T>>
+class AvlTree {
+    struct Node {
+        Node(const T& data)
+        : data(data), left(nullptr), right(nullptr), height(1), count(1){}
+        
+        T data;
+        Node* left;
+        Node* right;
+        size_t height;
+        size_t count;
+    };
+
+public:
+    AvlTree(const Comparator& cmp = Comparator()) : root(nullptr), cmp(cmp)
+    {
+    }
+    
+    ~AvlTree()
+    {
+        destroyTree(root);
+    }
+    
+    size_t Add(const T& data)
+    {
+        size_t kth = 0;
+        root = addInternal(root, data, kth);
+        return kth;
+    }
+    
+    bool Has(const T& data)
+    {
+        Node *tmp = root;
+        while (tmp)
+        {
+            if (tmp->data == data)
+                return true;
+            else if (tmp->data < data)
+                tmp = tmp->right;
+            else
+                tmp = tmp->left;
+        }
+        return false;
+    }
+    
+    void Delete(size_t k) {
+        root = deleteInternal(root, k);
+    }
+
+private:
+    Node* root;
+    Comparator cmp;
+    
+    void destroyTree(Node* node)
+    {
+        if (node)
+        {
+            destroyTree(node->left);
+            destroyTree(node->right);
+            delete node;
+        }
+    }
+    
+    Node* deleteInternal(Node* node, size_t k) {
+        if (!node) return nullptr;
+        
+        size_t leftK = getCount(node->left);
+        
+        if (k < leftK)
+            node->left = deleteInternal(node->left, k);
+        else if (k > leftK)
+            node->right = deleteInternal(node->right, k - leftK - 1);
+        else{
+            Node* left = node->left;
+            Node* right = node->right;
+            
+            delete node;
+                    
+            if (!right) return left;
+            if (!left) return right;
+                    
+            Node* tmp = nullptr;
+            if (getHeight(left) <= getHeight(right))
+                right = findAndRemoveMin(right, tmp);
+            else
+                left = findAndRemoveMax(left, tmp);
+            
+            tmp->left = left;
+            tmp->right = right;
+            return doBalance(tmp);
+        }
+            
+        fixCount(node);
+        return doBalance(node);
+    }
+    
+    
+    Node* findAndRemoveMin(Node* node, Node*& minNode){
+        if (!node->left){
+            minNode = node;
+            return node->right;
+        }
+    
+        node->left = findAndRemoveMin(node->left, minNode);
+        fixCount(node);
+        return doBalance(node);
+    }
+    
+    Node* findAndRemoveMax(Node* node, Node*& maxNode){
+        if (!node->right){
+            maxNode = node;
+            return node->left;
+        }
+    
+        node->right = findAndRemoveMax(node->right, maxNode);
+        fixCount(node);
+        return doBalance(node);
+    }
+    
+    Node* addInternal(Node* node, const T& data, size_t& kth) {
+        if (!node)
+            return new Node(data);
+
+        
+        if (!cmp(data, node->data)){
+            kth += getCount(node->left) + 1;
+            node->right = addInternal(node->right, data, kth);
+        }else{
+            node->left = addInternal(node->left, data, kth);
+        }
+        
+        return doBalance(node);
+    }
+    
+    size_t getHeight(Node* node)
+    {
+        return node ? node->height : 0;
+    }
+    
+    void fixHeight(Node* node)
+    {
+        node->height = std::max(getHeight(node->left), getHeight(node->right)) + 1;
+    }
+    
+    size_t getCount(Node* node)
+    {
+        return node ? node->count : 0;
+    }
+    
+    void fixCount(Node* node)
+    {
+        if (node){
+            node->count = 1 + getCount(node->left) + getCount(node->right);
+            fixHeight(node);
+        }
+    }
+    
+    int getBalance(Node* node)
+    {
+        return getHeight(node->right) - getHeight(node->left);
+    }
+    
+    Node* rotateLeft(Node* node)
+    {
+        Node* tmp = node->right;
+        node->right = tmp->left;
+        tmp->left = node;
+        
+        fixHeight(node);
+        fixHeight(tmp);
+        fixCount(node);
+        fixCount(tmp);
+        
+        return tmp;
+    }
+    
+    Node* rotateRight(Node* node)
+    {
+        Node* tmp = node->left;
+        node->left = tmp->right;
+        tmp->right = node;
+        
+        fixHeight(node);
+        fixHeight(tmp);
+        fixCount(node);
+        fixCount(tmp);
+        
+        return tmp;
+    }
+    
+    Node* doBalance(Node* node)
+    {
+        fixHeight(node);
+        fixCount(node);
+        
+        switch (getBalance(node))
+        {
+            case 2:
+            {
+                if (getBalance(node->right) < 0)
+                    node->right = rotateRight(node->right);
+                return rotateLeft(node);
+            }
+            case -2:
+            {
+                if (getBalance(node->left) > 0)
+                    node->left = rotateLeft(node->left);
+                return rotateRight(node);
+            }
+            default:
+                return node;
+        }
+        
+        return node;
+    }
+};
+
+void run(std::istream& input, std::ostream& output) {
+    AvlTree<int, std::greater<int>> tree;
+    int n;
+    input >> n;
+    for (int i = 0; i < n; ++i) {
+        int op, data;
+        input >> op >> data;
+        
+        if (op == 1)
+            output << tree.Add(data) << std::endl;
+        else
+            tree.Delete(data);
+
+    }
+}
+
+int main() {
+    run(std::cin, std::cout);
+    
+    return 0;
+}
+

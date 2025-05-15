@@ -1,66 +1,282 @@
-// 2.4
-// Дан отсортированный массив различных целых чисел A[0..n-1] и массив целых чисел B[0..m-1].
-// Для каждого элемента массива B[i] найдите минимальный индекс элемента массива A[k], ближайшего по значению к B[i].
+// Task 4
+//Реализуйте AVL-дерево. Решения с использованием других структур засчитываться не будут.
+//Входной файл содержит описание операций с деревом.
+
+
+
+//В каждой строке находится одна из следующих операций:
+//insert — добавить в дерево ключ. Если ключ есть в дереве, то ничего делать не надо.
+//delete — удалить из дерева ключ. Если ключа в дереве нет, то ничего делать не надо.
+//exists — если ключ есть в дереве, вывести «true», иначе «false»
+//next — минимальный элемент в дереве, больший, или «none», если такого нет.
+//prev — максимальный элемент в дереве, меньший, или «none», если такого нет.
+
+
 
 #include <iostream>
-#include <cmath>
+#include <string>
 
 
-int exponentialSearch(int* arr, int len, int target){
-    if (arr[0] == target) return 0;
-
-    int powerOfTwo = 1;
-    while (powerOfTwo < len && arr[powerOfTwo] <= target){
-        powerOfTwo *= 2;
+template <typename T, typename Comparator = std::less<T>>
+class AvlTree {
+struct Node {
+    Node(const T& data)
+    : data(data), left(nullptr), right(nullptr), height(1), count(1){}
+    
+    T data;
+    Node* left;
+    Node* right;
+    size_t height;
+    size_t count;
+    
+};
+public:
+    AvlTree(const Comparator& comp = Comparator()) : root(nullptr), cmp(comp) {}
+    
+    ~AvlTree() {
+        destroyTree(root);
     }
-    return fmin(powerOfTwo/2, len-1);
-}
 
+    void Add(const T& data){
+        root = addInternal(root, data);
+    }
 
-int binarySearch(int* arr, int len, int target){
-    int start = exponentialSearch(arr, len, target);
-    int end = fmin(start*2, len-1);
+    void Delete(const T& data){
+        root = deleteInternal(root, data);
+    }
+
+    bool Has(const T& data){
+        return hasInternal(root, data);
+    }
+
+    std::string Next(const T& data){
+        Node* result = nextInternal(root, data);
+        return result ? std::to_string(result->data) : "none";
+    }
+
+    std::string Prev(const T& data){
+        Node* result = prevInternal(root, data);
+        return result ? std::to_string(result->data) : "none";
+    }
+private:
+    Node* root;
+    Comparator cmp;
     
-    while (start <= end){
-        int mid = start + (end - start) / 2;
-
-        if (target == arr[mid]) return mid;
-        else if (target > arr[mid]) start = mid + 1;
-        else end = mid - 1;
+    void destroyTree(Node* node)
+    {
+        if (node)
+        {
+            destroyTree(node->left);
+            destroyTree(node->right);
+            delete node;
+        }
     }
     
-    return start;
-}
-
-
-void findNearest(int* A, int n, int* B, int m){
-    int* res = new int[m];
+    Node* deleteInternal(Node* node, const T& data) {
+        if (!node) return nullptr;
+                
+        if (cmp(data, node->data))
+            node->left = deleteInternal(node->left, data);
+        else if (cmp(node->data, data))
+            node->right = deleteInternal(node->right, data);
+        else {
+            Node* left = node->left;
+            Node* right = node->right;
+            delete node;
+            
+            if (!right) return left;
+            if (!left) return right;
+                    
+            Node* tmp = nullptr;
+            if (getHeight(left) <= getHeight(right))
+                right = findAndRemoveMin(right, tmp);
+            else
+                left = findAndRemoveMax(left, tmp);
+            
+            tmp->left = left;
+            tmp->right = right;
+            return doBalance(tmp);
+        }
+        return doBalance(node);
+    }
     
-    for (int i = 0; i < m; ++i)
-        res[i] = binarySearch(A, n, B[i]);
     
-    for (int i = 0; i < m; ++i)
-        std::cout << res[i] << (i == m - 1 ? "\n" : " ");
+    Node* findAndRemoveMin(Node* node, Node*& minNode){
+        if (!node->left){
+            minNode = node;
+            return node->right;
+        }
+    
+        node->left = findAndRemoveMin(node->left, minNode);
+        fixCount(node);
+        return doBalance(node);
+    }
+    
+    Node* findAndRemoveMax(Node* node, Node*& maxNode){
+        if (!node->right){
+            maxNode = node;
+            return node->left;
+        }
+    
+        node->right = findAndRemoveMax(node->right, maxNode);
+        fixCount(node);
+        return doBalance(node);
+    }
+    
+    Node* addInternal(Node* node, const T& data) {
+        if (!node)
+            return new Node(data);
 
-    delete[] res;
+        
+        if (!cmp(data, node->data)){
+            node->right = addInternal(node->right, data);
+        }else{
+            node->left = addInternal(node->left, data);
+        }
+        
+        return doBalance(node);
+    }
+    
+    size_t getHeight(Node* node)
+    {
+        return node ? node->height : 0;
+    }
+    
+    void fixHeight(Node* node)
+    {
+        node->height = std::max(getHeight(node->left), getHeight(node->right)) + 1;
+    }
+    
+    size_t getCount(Node* node)
+    {
+        return node ? node->count : 0;
+    }
+    
+    void fixCount(Node* node)
+    {
+        if (node){
+            node->count = 1 + getCount(node->left) + getCount(node->right);
+            fixHeight(node);
+        }
+    }
+    
+    int getBalance(Node* node)
+    {
+        return getHeight(node->right) - getHeight(node->left);
+    }
+    
+    Node* rotateLeft(Node* node)
+    {
+        Node* tmp = node->right;
+        node->right = tmp->left;
+        tmp->left = node;
+        
+        fixHeight(node);
+        fixHeight(tmp);
+        fixCount(node);
+        fixCount(tmp);
+        
+        return tmp;
+    }
+    
+    Node* rotateRight(Node* node)
+    {
+        Node* tmp = node->left;
+        node->left = tmp->right;
+        tmp->right = node;
+        
+        fixHeight(node);
+        fixHeight(tmp);
+        fixCount(node);
+        fixCount(tmp);
+        
+        return tmp;
+    }
+    
+    Node* doBalance(Node* node)
+    {
+        fixHeight(node);
+        fixCount(node);
+        
+        switch (getBalance(node))
+        {
+            case 2:
+            {
+                if (getBalance(node->right) < 0)
+                    node->right = rotateRight(node->right);
+                return rotateLeft(node);
+            }
+            case -2:
+            {
+                if (getBalance(node->left) > 0)
+                    node->left = rotateLeft(node->left);
+                return rotateRight(node);
+            }
+            default:
+                return node;
+        }
+        
+        return node;
+    }
+    Node* nextInternal(Node* node, const T& data, Node* target = nullptr){
+        if (!node) return target;
+        
+        if (cmp(data, node->data))
+            return nextInternal(node->left, data, node);
+        else
+            return nextInternal(node->right, data, target);
+    }
+
+    Node* prevInternal(Node* node, const T& data, Node* target = nullptr){
+        if (!node) return target;
+        
+        if (cmp(node->data, data))
+            return prevInternal(node->right, data, node);
+        else
+            return prevInternal(node->left, data, target);
+    }
+    
+    bool hasInternal(Node* node, const T& data){
+        if (!node) return false;
+        
+        if (!cmp(data, node->data) && !cmp(node->data, data))
+            return true;
+        
+        return cmp(data, node->data) ? hasInternal(node->left, data) : hasInternal(node->right, data);
+    }
+};
+
+void run(std::istream& input, std::ostream& output) {
+    AvlTree<int> tree;
+    std::string op;
+    int data;
+    
+    while (input >> op) {
+        if (op == "insert"){
+            input >> data;
+            tree.Add(data);
+        }
+        else if (op == "delete"){
+            input >> data;
+            tree.Delete(data);
+        }
+        else if (op == "exists"){
+            input >> data;
+            output << (tree.Has(data) ? "true" : "false") << std::endl;
+        }
+        else if (op == "next"){
+            input >> data;
+            output << tree.Next(data) << std::endl;
+        }
+        else if (op == "prev"){
+            input >> data;
+            output << tree.Prev(data) << std::endl;
+        }
+    }
 }
-
 int main() {
-    int n;
-    std::cin >> n;
-    int* A = new int[n];
-    for (int i = 0; i < n; ++i) std::cin >> A[i];
-
-    int m;
-    std::cin >> m;
-    int* B = new int[m];
-    for (int i = 0; i < m; ++i) std::cin >> B[i];
-
-    findNearest(A, n, B, m);
-
-    delete[] A;
-    delete[] B;
-
+    run(std::cin, std::cout);
+    
     return 0;
 }
 
