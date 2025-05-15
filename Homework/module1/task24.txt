@@ -1,0 +1,68 @@
+// 2.4
+// Дан отсортированный массив различных целых чисел A[0..n-1] и массив целых чисел B[0..m-1].
+// Для каждого элемента массива B[i] найдите минимальный индекс элемента массива A[k], ближайшего по значению к B[i].
+
+#include <iostream>
+#include <cmath>
+#include <sstream>
+#include <cassert>
+
+
+int binarySearch(int* arr, int start, int end, int target){
+    
+    while (start < end){
+        int mid = start + (end - start) / 2;
+        if (abs(target - arr[mid+1]) < abs(target - arr[mid])) start = mid + 1;
+        else end = mid;
+    }
+    return (abs(target - arr[start]) <= abs(target - arr[end])) ? start : end;
+    
+}
+
+
+int exponentialSearch(int* arr, int len, int target){
+    if (arr[0] == target) return 0;
+
+    int powerOfTwo = 1;
+    while (powerOfTwo < len && arr[powerOfTwo] <= target){
+        powerOfTwo *= 2;
+    }
+    return binarySearch(arr, powerOfTwo/2, std::min(powerOfTwo, len), target);
+}
+
+
+void findNearest(int* A, int n, int* B, int m){
+    int* res = new int[m];
+    
+    for (int i = 0; i < m; ++i)
+        res[i] = exponentialSearch(A, n, B[i]);
+    
+    for (int i = 0; i < m; ++i)
+        std::cout << res[i] << (i == m - 1 ? "\n" : " ");
+
+    delete[] res;
+}
+
+
+void run(std::istream &input, std::ostream &output){
+    int n;
+    std::cin >> n;
+    int* A = new int[n];
+    for (int i = 0; i < n; ++i) std::cin >> A[i];
+
+    int m;
+    std::cin >> m;
+    int* B = new int[m];
+    for (int i = 0; i < m; ++i) std::cin >> B[i];
+
+    findNearest(A, n, B, m);
+    
+    delete[] A;
+    delete[] B;
+}
+
+
+int main() {
+    run(std::cin, std::cout);
+    return 0;
+}

@@ -1,0 +1,100 @@
+// 6.2
+// Дано множество целых чисел из [0..10^9] размера n.
+// Используя алгоритм поиска k-ой порядковой статистики, требуется найти следующие параметры множества:
+// - 10%  перцентиль
+// - медиана
+// - 90%  перцентиль
+// Реализуйте стратегию выбора опорного элемента “медиана трёх”.
+// Функцию Partition реализуйте методом прохода двумя итераторами от конца массива к началу.
+
+#include <iostream>
+#include <sstream>
+#include <cassert>
+
+
+
+template <typename T, typename Comparator = std::less<T>>
+T medianOfThree(T* arr, int start, int end, Comparator cmp = Comparator()){
+    int mid = start + (end - start)/2;
+
+    if (cmp(arr[mid], arr[start])) std::swap(arr[start], arr[mid]);
+    if (cmp(arr[end], arr[start])) std::swap(arr[start], arr[end]);
+    if (cmp(arr[end], arr[mid])) std::swap(arr[mid], arr[end]);
+
+    return mid;
+}
+
+
+template <typename T, typename Comparator = std::less<T>>
+int partition(T* arr, int start, int end, Comparator cmp = Comparator()){
+    T pivotIdx = medianOfThree(arr, start, end, cmp);
+    int i = end;
+    int j = end;
+    
+    std::swap(arr[start], arr[pivotIdx]);
+    int pivot = arr[start];
+    
+    while (j > start){
+        if (!cmp(arr[j], pivot)) {
+            std::swap(arr[i], arr[j]);
+            i--;
+        }
+        j--;
+    }
+    std::swap(arr[i], arr[start]);
+
+    return i;
+}
+
+
+template <typename T, typename Comparator = std::less<T>>
+T findKth(T* arr, int n, int k, Comparator cmp = Comparator()){
+    int start = 0;
+    int end = n - 1;
+
+    while (start <= end){
+        int pivotIdx = partition(arr, start, end, cmp);
+        
+        if (pivotIdx == k)
+            return arr[pivotIdx];
+        else if (pivotIdx < k)
+            start = pivotIdx + 1;
+        else
+            end = pivotIdx - 1;
+    }
+    
+    return arr[k];
+}
+
+
+
+void run(std::istream &input, std::ostream &output)
+{
+    int n;
+    input >> n;
+    int* nums = new int[n];
+    
+    for (int i = 0; i < n; ++i)
+        input >> nums[i];
+
+    output << findKth(nums, n, n/10) << std::endl;
+    output << findKth(nums, n, n/2) << std::endl;
+    output << findKth(nums, n, 9*n/10) << std::endl;
+    
+//    output << findKth(nums, 0, n-1, n/10) << std::endl;
+//    output << findKth(nums, n/10+1, n-1, n/2) << std::endl;
+//    output << findKth(nums, n/2+1, n-1, 9*n/10) << std::endl;
+    
+
+
+    
+    delete[] nums;
+}
+
+
+int main() {
+    
+    run(std::cin, std::cout);
+    return 0;
+}
+

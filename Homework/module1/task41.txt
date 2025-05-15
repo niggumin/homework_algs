@@ -1,0 +1,147 @@
+
+// 4.1
+//Напишите программу, которая использует кучу для слияния K отсортированных массивов суммарной длиной N.
+
+
+#include <iostream>
+#include <sstream>
+#include <cassert>
+
+
+template <typename T, typename Comparator = std::less<T>>
+class MinHeap {
+private:
+    T* buf;
+    int pointer;
+    int size;
+    Comparator comparator;
+    
+    void siftUp(int index){
+        int parent = (index - 1)/2;
+        while (index > 0 && comparator(buf[index], buf[parent])){
+            std::swap(buf[index], buf[parent]);
+            index = parent;
+            parent = (index - 1)/2;
+        }
+    }
+
+    void siftDown(int index){
+        int l = 2*index + 1;
+        int r = 2*index + 2;
+        int parent = index;
+
+        if (l < pointer && comparator(buf[l], buf[parent]))
+            parent = l;
+
+        if (r < pointer && comparator(buf[r], buf[parent]))
+            parent = r;
+            
+        if (parent != index){
+            std::swap(buf[index], buf[parent]);
+            siftDown(parent);
+        }
+    }
+
+    void resize(int newSize) {
+        T* newBuf = new T[newSize];
+        std::copy(buf, buf + pointer, newBuf);
+        delete[] buf;
+        buf = newBuf;
+        size = newSize;
+    }
+public:
+    MinHeap(const Comparator& comp = Comparator())
+    : comparator(comp), pointer(0), size(0), buf(nullptr) {}
+
+    MinHeap(const MinHeap &other) = delete;
+    MinHeap& operator=(const MinHeap &other) = delete;
+    
+    ~MinHeap(){
+        delete[] buf;
+    }
+
+        
+    void add(T val){
+        if (pointer == size)
+            resize(size == 0 ? 1 : size*2);
+        buf[pointer++] = val;
+        siftUp(pointer - 1);
+    }
+
+        
+    T top(){
+        if (isEmpty())
+            std::cout << "IS EMPTY";
+        return buf[0];
+    }
+
+        
+    T extract(){
+        if (isEmpty())
+            std::cout << "IS EMPTY";
+            
+        T root = buf[0];
+        buf[0] = buf[--pointer];
+        siftDown(0);
+        return root;
+    }
+    
+    bool isEmpty(){
+        return pointer == 0;
+    }
+};
+    
+struct ArrayIterator {
+    int* buf;
+    int size;
+    int pointer;
+    
+    ArrayIterator()
+    : buf(nullptr), size(0), pointer(0) {}
+    
+    ArrayIterator(int* b, int s, int p)
+    : buf(b), size(s), pointer(p) {}
+    
+    static bool compareTo(const ArrayIterator& a, const ArrayIterator& b){
+        return a.buf[a.pointer] < b.buf[b.pointer];
+    }
+};
+
+
+void extractingAll(MinHeap<ArrayIterator, bool (*)(const ArrayIterator&, const ArrayIterator&)> *heap){
+    while (!heap->isEmpty()) {
+        ArrayIterator arrIt = heap->extract();
+        std::cout << arrIt.buf[arrIt.pointer] << " ";
+        if (++arrIt.pointer < arrIt.size) {
+            heap->add(arrIt);
+        } else
+            delete[] arrIt.buf;
+    }
+    std::cout << std::endl;
+}
+
+void run(std::istream &input, std::ostream &output)
+{
+    int k;
+    std::cin >> k;
+    MinHeap<ArrayIterator, bool (*)(const ArrayIterator&, const ArrayIterator&)> heap(ArrayIterator::compareTo);
+    for (int i = 0; i < k; ++i){
+        int size;
+        std::cin >> size;
+        int* buf = new int[size];
+        for (int j = 0; j < size; ++j) {
+            std::cin >> buf[j];
+        }
+        ArrayIterator arrIt(buf, size, 0);
+        heap.add(arrIt);
+    }
+
+    extractingAll(&heap);
+}
+
+int main() {
+//    testLogic();
+    run(std::cin, std::cout);
+//    testHeap();
+    return 0;
+}
